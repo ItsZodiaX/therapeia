@@ -1,17 +1,6 @@
-use axum::{Router, routing::post};
-use common::config::AppConfig;
-use sqlx::PgPool;
+pub mod app;
+pub mod domain;
+pub mod infra;
 
-mod handlers;
-mod models;
-
-pub fn router(db: PgPool, cfg: AppConfig) -> Router {
-    Router::new()
-        .nest(
-            "/auth",
-            Router::new()
-                .route("/register", post(handlers::register))
-                .route("/login", post(handlers::login)),
-        )
-        .with_state((db, cfg))
-}
+pub use crate::infra::http::ApiDoc;
+pub use crate::infra::http::router;
