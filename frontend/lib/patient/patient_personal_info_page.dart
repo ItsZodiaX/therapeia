@@ -3,16 +3,16 @@ import 'package:flutter_frontend/api_service.dart';
 import 'package:flutter_frontend/models/auth_session.dart';
 import '../widgets/custom_app_bar.dart';
 
-class InformationPagePatient extends StatefulWidget {
+class PatientPersonalInfoPage extends StatefulWidget {
   final AuthSession session;
 
-  const InformationPagePatient({super.key, required this.session});
+  const PatientPersonalInfoPage({super.key, required this.session});
 
   @override
-  State<InformationPagePatient> createState() => _InformationPagePatientState();
+  State<PatientPersonalInfoPage> createState() => _PatientPersonalInfoPageState();
 }
 
-class _InformationPagePatientState extends State<InformationPagePatient> {
+class _PatientPersonalInfoPageState extends State<PatientPersonalInfoPage> {
   late Future<PatientProfile> _profileFuture;
   final ApiService _apiService = ApiService();
 

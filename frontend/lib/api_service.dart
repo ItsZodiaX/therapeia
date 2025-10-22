@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:flutter_frontend/patient/models/patient_models.dart';
 import 'package:http/http.dart' as http;
 
 import 'doctor/models/doctor_models.dart';
@@ -307,6 +309,107 @@ class ApiService {
     );
   }
 
+  /// Patient appointments ---------------------------------------------------------------
+
+  Future<List<Doctor>> getAvailableDoctors() async {
+    final lists = await _getJsonListOrEmpty('/appointments/doctor');
+    final doctors = lists
+        .whereType<Map<String, dynamic>>()
+        .map(Doctor.fromJson)
+        .toList();
+
+    await Future.wait(
+      doctors.map((doc) async {
+        final rawTimeSlots = await _getJsonListOrEmpty(
+          '/appointments/doctor/${doc.id}',
+        );
+        doc.timeSlots = rawTimeSlots
+            .whereType<Map<String, dynamic>>()
+            .map(DoctorTimeSlot.fromJson)
+            .toList();
+      }),
+    );
+
+    return doctors;
+  }
+
+  Future<bool> createAppointment({
+    required AuthSession session,
+    required DateTime date,
+    required String doctorId,
+    required String startTime,
+    required String endTime,
+  }) async {
+    final payload = <String, dynamic>{
+      'date': _formatDate(date),
+      'doctor_id': doctorId,
+      'start_time': startTime,
+      'end_time': endTime,
+    };
+    final data = await _postJson(
+      '/appointments',
+      body: payload,
+      session: session,
+    );
+
+    return data.containsKey('appointment_id');
+  }
+
+  Future<bool> cancelAppointment({
+    required AuthSession session,
+    required int appointmentId,
+  }) async {
+    final response = await _client
+        .patch(
+          _uri('/appointments/$appointmentId/canceled'),
+          headers: _headers(session: session),
+        )
+        .timeout(_timeout);
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      _throwHttpError(response);
+    }
+
+    return true;
+  }
+
+  /// Patient order & shipping ---------------------------------------------------------------
+
+  Future<List<Order>> getOrderHistory(AuthSession session) async {
+    final data = await _getJsonListOrEmpty('/orders', session: session);
+    return data.whereType<Map<String, dynamic>>().map(Order.fromJson).toList();
+  }
+
+  Future<ShippingStatus> getShippingStatus(
+    AuthSession session,
+    String orderId,
+  ) async {
+    final data = await _getJson(
+      '/shipping/orders/$orderId/status',
+      session: session,
+    );
+    return ShippingStatus.fromJson(data);
+  }
+
+  Future<Uint8List> getShippingMapImage(
+    AuthSession session,
+    String orderId,
+  ) async {
+    final response = await _client
+        .get(
+          _uri('/shipping/orders/$orderId/map'),
+          headers: _headers(session: session),
+        )
+        .timeout(_timeout);
+
+    if (response.statusCode == 200) return response.bodyBytes;
+
+    if (response.statusCode == 404) {
+      throw Exception('Order not found');
+    }
+    throw Exception('Failed to fetch map: ${response.statusCode}');
+  }
+
   /// Doctor view -----------------------------------------------------------------
 
   Future<List<DoctorAppointment>> getDoctorAppointments(
@@ -390,6 +493,14 @@ class ApiService {
   }
 
   /// Prescriptions ---------------------------------------------------------------
+
+  Future<List<PrescriptionItem>> getPrescriptions(AuthSession session) async {
+    final data = await _getJsonListOrEmpty('/prescriptions', session: session);
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(PrescriptionItem.fromJson)
+        .toList();
+  }
 
   Future<List<PrescriptionItem>> getPatientPrescriptions(
     AuthSession session,
