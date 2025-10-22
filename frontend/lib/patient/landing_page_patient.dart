@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_frontend/patient/book_appointments_page.dart';
 import 'package:flutter_frontend/patient/medical_rights_page.dart';
 import 'package:flutter_frontend/patient/patient_personal_info_page.dart';
+import 'package:flutter_frontend/patient/payment_page.dart';
 import 'package:flutter_frontend/patient/prescriptions_page.dart';
 import 'appointments_page_patient.dart';
 import 'order_history_page.dart';
@@ -20,9 +21,9 @@ class LandingPagePatient extends StatelessWidget {
     {'text': 'ข้อมูลส่วนตัว', 'icon': '⭐'},
     {'text': 'เช็คสิทธิ์รักษา', 'icon': '⭐'},
     {'text': 'รายการนัด', 'icon': '⭐'},
-    {'text': 'นัดพบแพทย์', 'icon': '⭐'},
     {'text': 'ใบสั่งยา', 'icon': '⭐'},
     {'text': 'ประวัติการสั่งซื้อ', 'icon': '⭐'},
+    {'text': 'ชำระเงิน', 'icon': '⭐'},
   ];
 
   @override
@@ -80,15 +81,6 @@ class LandingPagePatient extends StatelessWidget {
                     ),
                   );
                   break;
-                case 'นัดพบแพทย์':
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          BookAppointmentPage(session: session),
-                    ),
-                  );
-                  break;
                 case 'ใบสั่งยา':
                   Navigator.push(
                     context,
@@ -103,6 +95,15 @@ class LandingPagePatient extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (context) =>
                           OrderHistoryPage(session: session),
+                    ),
+                  );
+                  break;
+                case 'ชำระเงิน':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          PaymentPagePatient(session: session),
                     ),
                   );
                   break;

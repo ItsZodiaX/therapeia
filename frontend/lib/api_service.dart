@@ -380,6 +380,70 @@ class ApiService {
     return data.whereType<Map<String, dynamic>>().map(Order.fromJson).toList();
   }
 
+  Future<List<Order>> getPendingOrders(AuthSession session) async {
+    final data = await _getJsonListOrEmpty('/orders', session: session);
+    return data.whereType<Map<String, dynamic>>().map(Order.fromJson).where((o) => o.statusCode == 1).toList();
+  }
+
+  Future<ShippingAddress?> getShippingAddress(AuthSession session) async {
+    try {
+      final data = await _getJson('/shipping/address', session: session);
+      return ShippingAddress.fromJson(data);
+    } catch (e) {
+      final msg = e.toString();
+      if (msg.contains('404') || msg.contains('Not Found')) {
+        return null;
+      }
+      rethrow;
+    }
+  }
+
+  Future<bool> saveShippingAddress(
+      AuthSession session,
+      String address,
+      String firstName,
+      String lastName,
+      double? lat,
+      double? lon,
+      String phone,
+      String postalCode,
+      ) async {
+    final payload = <String, dynamic>{
+      'address': address.trim(),
+      'first_name': firstName.trim(),
+      'last_name': lastName.trim(),
+      'phone': phone.trim(),
+      'postal_code': postalCode.trim(),
+      'lat': lat,
+      'lon': lon
+    };
+    await _postJson('/shipping/address', body: payload, session: session);
+    return true;
+  }
+
+  Future<bool> updateShippingAddress(
+    AuthSession session,
+    String address,
+    String firstName,
+    String lastName,
+    double? lat,
+    double? lon,
+    String phone,
+    String postalCode,
+  ) async {
+    final payload = <String, dynamic>{
+      'address': address.trim(),
+      'first_name': firstName.trim(),
+      'last_name': lastName.trim(),
+      'phone': phone.trim(),
+      'postal_code': postalCode.trim(),
+      'lat': lat,
+      'lon': lon
+    };
+    await _patchJson('/shipping/address', body: payload, session: session);
+    return true;
+  }
+
   Future<ShippingStatus> getShippingStatus(
     AuthSession session,
     String orderId,

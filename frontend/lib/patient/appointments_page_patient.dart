@@ -4,6 +4,7 @@ import '../api_service.dart';
 import 'package:flutter_frontend/models/auth_session.dart';
 
 import 'appointment_detail_page.dart';
+import 'book_appointments_page.dart';
 
 class AppointmentsPagePatient extends StatefulWidget {
   final AuthSession session;
@@ -101,6 +102,34 @@ class _AppointmentsPagePatientState extends State<AppointmentsPagePatient> {
           ],
         ),
       ),
+
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                icon: const Icon(Icons.add_circle_outline),
+                label: const Text('นัดพบแพทย์'),
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => BookAppointmentPage(session: widget.session),
+                    ),
+                  );
+
+                  if (result == 'created' && mounted) {
+                    setState(() {
+                      _appointmentsFuture =
+                          _apiService.getPatientAppointments(widget.session);
+                    });
+                  }
+                },
+              ),
+            ),
+          ),
+        )
     );
   }
 }

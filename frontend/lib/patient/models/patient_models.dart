@@ -59,6 +59,38 @@ class OrderItem {
   }
 }
 
+class ShippingAddress {
+  final String address;
+  final String firstName;
+  final String lastName;
+  final double ?lat;
+  final double ?lon;
+  final String phone;
+  final String postalCode;
+
+  ShippingAddress({
+    required this.address,
+    required this.firstName,
+    required this.lastName,
+    required this.lat,
+    required this.lon,
+    required this.phone,
+    required this.postalCode,
+  });
+
+  factory ShippingAddress.fromJson(Map<String, dynamic> json) {
+    return ShippingAddress(
+      address: (json['address'] as String?)?.trim() ?? '',
+      firstName: (json['first_name'] as String?)?.trim() ?? '',
+      lastName: (json['last_name'] as String?)?.trim() ?? '',
+      lat: (json['lat'] as num?)?.toDouble(),
+      lon: (json['lon'] as num?)?.toDouble(),
+      phone: (json['phone'] as String?)?.trim() ?? '',
+      postalCode: (json['postal_code'] as String?)?.trim() ?? '',
+    );
+  }
+}
+
 class ShippingStatus {
   final String? imageUrl;
   final String orderId;
