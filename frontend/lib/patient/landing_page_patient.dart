@@ -7,10 +7,12 @@ import '../login_page.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/landing_page_item.dart';
 
-class LandingPagePatient extends StatelessWidget {
-  final String email;
+import 'package:flutter_frontend/models/auth_session.dart';
 
-  const LandingPagePatient({super.key, required this.email});
+class LandingPagePatient extends StatelessWidget {
+  final AuthSession session;
+
+  const LandingPagePatient({super.key, required this.session});
 
   static const List<Map<String, String>> items = [
     {'text': 'ข้อมูลส่วนตัว', 'icon': '⭐'},
@@ -54,7 +56,7 @@ class LandingPagePatient extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          InformationPagePatient(email: email),
+                          InformationPagePatient(session: session),
                     ),
                   );
                   break;
@@ -70,7 +72,8 @@ class LandingPagePatient extends StatelessWidget {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const AppointmentsPagePatient(),
+                      builder: (context) =>
+                          AppointmentsPagePatient(session: session),
                     ),
                   );
                   break;

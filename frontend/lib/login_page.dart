@@ -6,6 +6,7 @@ import 'widgets/custom_textfield.dart';
 import 'widgets/custom_button.dart';
 
 import 'package:flutter_frontend/api_service.dart';
+import 'package:flutter_frontend/models/auth_session.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -13,9 +14,19 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _emailController = TextEditingController();
+  final _citizenIdController = TextEditingController();
   final _passwordController = TextEditingController();
-  String _selectedRole = 'ผู้ป่วย';
+  final _identifierController = TextEditingController();
+  UserRole _selectedRole = UserRole.patient;
+  bool _isSubmitting = false;
+
+  @override
+  void dispose() {
+    _citizenIdController.dispose();
+    _passwordController.dispose();
+    _identifierController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,11 +46,21 @@ class _LoginPageState extends State<LoginPage> {
             ),
             SizedBox(height: 32.0),
             CustomTextField(
-              controller: _emailController,
-              labelText: 'อีเมล (Email)',
-              hintText: 'Enter your Email',
+              controller: _citizenIdController,
+              labelText: 'เลขบัตรประชาชน 13 หลัก (Citizen ID)',
+              hintText: 'กรอกเลขบัตรประชาชน',
             ),
-            SizedBox(height: 16.0),
+            const SizedBox(height: 16.0),
+            CustomTextField(
+              controller: _identifierController,
+              labelText: _selectedRole == UserRole.patient
+                  ? 'Hospital Number (HN)'
+                  : 'เลขที่ใบประกอบวิชาชีพ (MLN)',
+              hintText: _selectedRole == UserRole.patient
+                  ? 'กรอก HN ของผู้ป่วย'
+                  : 'กรอกเลขเวชกรรมของแพทย์',
+            ),
+            const SizedBox(height: 16.0),
             CustomTextField(
               controller: _passwordController,
               labelText: 'รหัสผ่าน (Password)',
@@ -50,8 +71,8 @@ class _LoginPageState extends State<LoginPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Radio<String>(
-                  value: 'ผู้ป่วย',
+                Radio<UserRole>(
+                  value: UserRole.patient,
                   groupValue: _selectedRole,
                   onChanged: (value) {
                     if (value != null) {
@@ -63,8 +84,8 @@ class _LoginPageState extends State<LoginPage> {
                 ),
                 const Text('ผู้ป่วย'),
                 const SizedBox(width: 16.0),
-                Radio<String>(
-                  value: 'แพทย์',
+                Radio<UserRole>(
+                  value: UserRole.doctor,
                   groupValue: _selectedRole,
                   onChanged: (value) {
                     if (value != null) {
@@ -79,49 +100,8 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 24.0),
             CustomButton(
-              text: 'เข้าสู่ระบบ',
-              onPressed: () {
-                final apiService = ApiService();
-                final role = _selectedRole == 'แพทย์' ? 'DOCTOR' : 'PATIENT';
-
-                apiService
-                    .login(
-                      _emailController.text,
-                      _passwordController.text,
-                      role: role,
-                    )
-                    .then((response) {
-                      // TODO: Store the token securely
-                      final role =
-                          (response['role'] as String?)?.toUpperCase() ??
-                          'PATIENT';
-
-                      final email = _emailController.text;
-
-                      if (role == 'DOCTOR') {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                LandingPageDoctor(email: email),
-                          ),
-                        );
-                      } else {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                LandingPagePatient(email: email),
-                          ),
-                        );
-                      }
-                    })
-                    .catchError((error) {
-                      ScaffoldMessenger.of(
-                        context,
-                      ).showSnackBar(SnackBar(content: Text(error.toString())));
-                    });
-              },
+              text: _isSubmitting ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบ',
+              onPressed: _isSubmitting ? null : () => _handleLogin(),
               color: Colors.lightGreen[100],
               textColor: Colors.black,
             ),
@@ -138,5 +118,66 @@ class _LoginPageState extends State<LoginPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleLogin() async {
+    final citizenId = _citizenIdController.text.trim();
+    final identifier = _identifierController.text.trim();
+    final password = _passwordController.text;
+
+    if (citizenId.isEmpty || identifier.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('กรุณากรอกข้อมูลให้ครบถ้วน')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    final apiService = ApiService();
+
+    try {
+      late AuthSession session;
+      if (_selectedRole == UserRole.patient) {
+        session = await apiService.loginPatient(
+          hn: identifier,
+          citizenId: citizenId,
+          password: password,
+        );
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LandingPagePatient(session: session),
+          ),
+        );
+      } else {
+        session = await apiService.loginDoctor(
+          mln: identifier,
+          citizenId: citizenId,
+          password: password,
+        );
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => LandingPageDoctor(session: session),
+          ),
+        );
+      }
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
   }
 }

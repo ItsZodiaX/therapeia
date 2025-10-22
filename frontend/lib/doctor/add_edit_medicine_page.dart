@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_frontend/api_service.dart';
 import 'package:flutter_frontend/doctor/models/doctor_models.dart';
+import 'package:flutter_frontend/models/auth_session.dart';
 
 class AddEditMedicinePage extends StatefulWidget {
+  final AuthSession session;
   final String patientId;
   final String patientName;
   final PrescriptionItem? prescription;
@@ -12,6 +14,7 @@ class AddEditMedicinePage extends StatefulWidget {
 
   const AddEditMedicinePage({
     super.key,
+    required this.session,
     required this.patientId,
     required this.patientName,
     this.prescription,
@@ -51,31 +54,42 @@ class _AddEditMedicinePageState extends State<AddEditMedicinePage> {
     _loadMedicines();
   }
 
-  Future<void> _loadMedicines() async {
+  Future<void> _loadMedicines([String keyword = '']) async {
     setState(() {
       _isLoadingMedicines = true;
       _medicinesError = null;
     });
 
     try {
-      final medicines = await _apiService.getMedicines();
+      final medicines = await _apiService.searchMedicines(
+        widget.session,
+        keyword: keyword,
+      );
+
+      MedicineItem? selected = _selectedMedicine;
+      final prescription = widget.prescription;
+
+      if (prescription != null && prescription.medicineId != null) {
+        selected = _findMedicineById(medicines, prescription.medicineId!);
+        if (selected == null) {
+          final info = await _apiService.getMedicineInfo(
+            widget.session,
+            prescription.medicineId!,
+          );
+          if (info != null) {
+            medicines.insert(0, info);
+            selected = info;
+          }
+        }
+      }
+
+      selected ??= medicines.isNotEmpty ? medicines.first : null;
+
       setState(() {
         _medicines = medicines;
         _filteredMedicines = medicines;
+        _selectedMedicine = selected;
         _isLoadingMedicines = false;
-        if (widget.prescription != null) {
-          MedicineItem? matched;
-          for (final medicine in medicines) {
-            if (medicine.medicineId == widget.prescription!.medicineId) {
-              matched = medicine;
-              break;
-            }
-          }
-          _selectedMedicine =
-              matched ?? (medicines.isNotEmpty ? medicines.first : null);
-        } else if (medicines.isNotEmpty) {
-          _selectedMedicine = medicines.first;
-        }
       });
     } catch (e) {
       setState(() {
@@ -94,34 +108,13 @@ class _AddEditMedicinePageState extends State<AddEditMedicinePage> {
     super.dispose();
   }
 
-  void _filterMedicines(String keyword) {
-    if (keyword.isEmpty) {
-      setState(() {
-        _filteredMedicines = List<MedicineItem>.from(_medicines);
-        if (_filteredMedicines.isEmpty) {
-          _selectedMedicine = null;
-        } else if (!_filteredMedicines.contains(_selectedMedicine)) {
-          _selectedMedicine = _filteredMedicines.first;
-        }
-      });
-      return;
-    }
-
-    setState(() {
-      final matches = _medicines
-          .where(
-            (medicine) => medicine.medicineName.toLowerCase().contains(
-              keyword.toLowerCase(),
-            ),
-          )
-          .toList();
-      _filteredMedicines = matches;
-      if (_filteredMedicines.isEmpty) {
-        _selectedMedicine = null;
-      } else if (!_filteredMedicines.contains(_selectedMedicine)) {
-        _selectedMedicine = _filteredMedicines.first;
+  MedicineItem? _findMedicineById(List<MedicineItem> items, int id) {
+    for (final item in items) {
+      if (item.medicineId == id) {
+        return item;
       }
-    });
+    }
+    return null;
   }
 
   @override
@@ -236,7 +229,7 @@ class _AddEditMedicinePageState extends State<AddEditMedicinePage> {
               ),
               suffixIcon: Icon(Icons.search, color: Colors.grey),
             ),
-            onChanged: _filterMedicines,
+            onChanged: (value) => _loadMedicines(value),
           ),
           const Divider(height: 1),
           Padding(
@@ -503,6 +496,7 @@ class _AddEditMedicinePageState extends State<AddEditMedicinePage> {
     try {
       final prescription = isEditMode
           ? await _apiService.updatePrescription(
+              session: widget.session,
               prescriptionId: widget.prescription!.prescriptionId,
               patientId: widget.prescription!.patientId,
               medicineId: selectedMedicine.medicineId,
@@ -514,6 +508,7 @@ class _AddEditMedicinePageState extends State<AddEditMedicinePage> {
                   : _commentController.text.trim(),
             )
           : await _apiService.createPrescription(
+              session: widget.session,
               patientId: widget.patientId,
               medicineId: selectedMedicine.medicineId,
               dosage: _dosageController.text.trim(),

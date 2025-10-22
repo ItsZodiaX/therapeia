@@ -6,10 +6,12 @@ import '../login_page.dart';
 import '../widgets/custom_app_bar.dart';
 import '../widgets/landing_page_item.dart';
 
-class LandingPageDoctor extends StatelessWidget {
-  final String email;
+import 'package:flutter_frontend/models/auth_session.dart';
 
-  const LandingPageDoctor({super.key, required this.email});
+class LandingPageDoctor extends StatelessWidget {
+  final AuthSession session;
+
+  const LandingPageDoctor({super.key, required this.session});
 
   static const List<Map<String, String>> items = [
     {'text': 'ตารางนัดผู้ป่วย', 'icon': '⭐'},
@@ -50,7 +52,7 @@ class LandingPageDoctor extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          AppointmentsPageDoctor(email: email),
+                          AppointmentsPageDoctor(session: session),
                     ),
                   );
                   break;
@@ -59,7 +61,7 @@ class LandingPageDoctor extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          ConsultationRequestPage(email: email),
+                          ConsultationRequestPage(session: session),
                     ),
                   );
                   break;
@@ -68,7 +70,7 @@ class LandingPageDoctor extends StatelessWidget {
                     context,
                     MaterialPageRoute(
                       builder: (context) =>
-                          DoctorPersonalInfoPage(email: email),
+                          DoctorPersonalInfoPage(session: session),
                     ),
                   );
                   break;

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../widgets/custom_app_bar.dart';
 import '../api_service.dart';
+import 'package:flutter_frontend/models/auth_session.dart';
 
 class AppointmentsPagePatient extends StatefulWidget {
-  const AppointmentsPagePatient({super.key});
+  final AuthSession session;
+
+  const AppointmentsPagePatient({super.key, required this.session});
 
   @override
   State<AppointmentsPagePatient> createState() =>
@@ -13,12 +16,12 @@ class AppointmentsPagePatient extends StatefulWidget {
 class _AppointmentsPagePatientState extends State<AppointmentsPagePatient> {
   bool showUpcoming = true;
   final ApiService _apiService = ApiService();
-  late Future<List<dynamic>> _appointmentsFuture;
+  late Future<PatientAppointments> _appointmentsFuture;
 
   @override
   void initState() {
     super.initState();
-    _appointmentsFuture = _apiService.getAppointments();
+    _appointmentsFuture = _apiService.getPatientAppointments(widget.session);
   }
 
   @override
@@ -40,26 +43,35 @@ class _AppointmentsPagePatientState extends State<AppointmentsPagePatient> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: FutureBuilder<List<dynamic>>(
+              child: FutureBuilder<PatientAppointments>(
                 future: _appointmentsFuture,
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
                   } else if (snapshot.hasError) {
                     return Center(child: Text('Error: ${snapshot.error}'));
-                  } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(child: Text('No appointments found.'));
-                  } else {
-                    final items = snapshot.data!;
-                    return ListView.separated(
-                      itemCount: items.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (_, index) {
-                        final a = items[index];
-                        return _AppointmentRow(appointment: a);
-                      },
+                  }
+
+                  final data = snapshot.data;
+                  if (data == null) {
+                    return const Center(child: Text('ไม่พบข้อมูลการนัดหมาย'));
+                  }
+
+                  final items = showUpcoming ? data.upcoming : data.history;
+                  if (items.isEmpty) {
+                    return const Center(
+                      child: Text('ยังไม่มีรายการนัดหมายในช่วงนี้'),
                     );
                   }
+
+                  return ListView.separated(
+                    itemCount: items.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (_, index) {
+                      final appointment = items[index];
+                      return _AppointmentRow(appointment: appointment);
+                    },
+                  );
                 },
               ),
             ),
@@ -71,66 +83,93 @@ class _AppointmentsPagePatientState extends State<AppointmentsPagePatient> {
 }
 
 class _AppointmentRow extends StatelessWidget {
-  final Map<String, dynamic> appointment;
+  final AppointmentOverview appointment;
 
   const _AppointmentRow({required this.appointment});
 
   @override
   Widget build(BuildContext context) {
-    // TODO: Parse the status from the appointment data and map it to AppointmentStatus
-    const status = AppointmentStatus.confirmed;
+    final status = _mapStatus(appointment.status);
+    final dateLabel =
+        '${appointment.date} • ${appointment.startTime} - ${appointment.endTime}';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
+    return Card(
+      elevation: 0,
+      color: Colors.lightGreen[50],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: RichText(
-                text: TextSpan(
-                  style: DefaultTextStyle.of(
-                    context,
-                  ).style.copyWith(fontSize: 16),
-                  children: [
-                    const TextSpan(
-                      text: 'แผนก: ',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                    TextSpan(
-                      text:
-                          appointment['notes'] ??
-                          'N/A', // Example: Replace with actual department field
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        appointment.doctorName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        appointment.department ?? '-',
+                        style: const TextStyle(color: Colors.black87),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
+                _StatusChip(status: status),
+              ],
             ),
-            _StatusChip(status: status),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Icon(Icons.calendar_month_outlined, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    dateLabel,
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                const Icon(Icons.location_on_outlined, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    appointment.placeName.isEmpty ? '-' : appointment.placeName,
+                    style: const TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
-        const SizedBox(height: 4),
-        Text(
-          'Doctor ID: ${appointment['doctor_id']}', // Example: Replace with actual doctor name field
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            const Icon(Icons.calendar_month_outlined, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                // TODO: Parse and format the date correctly
-                appointment['start_time']?.toString() ?? 'N/A',
-                style: const TextStyle(fontSize: 13, color: Colors.black87),
-              ),
-            ),
-          ],
-        ),
-      ],
+      ),
     );
+  }
+
+  AppointmentStatus _mapStatus(String value) {
+    switch (value.toUpperCase()) {
+      case 'PENDING':
+        return AppointmentStatus.requested;
+      case 'ACCEPTED':
+        return AppointmentStatus.confirmed;
+      default:
+        return AppointmentStatus.canceled;
+    }
   }
 }
 
@@ -149,17 +188,17 @@ class _StatusChip extends StatelessWidget {
 
     switch (status) {
       case AppointmentStatus.confirmed:
-        label = 'Confirmed';
+        label = 'ยืนยันแล้ว';
         bg = const Color(0xFFB9F6CA);
         fg = const Color(0xFF1B5E20);
         break;
       case AppointmentStatus.requested:
-        label = 'Requested';
+        label = 'รอการยืนยัน';
         bg = const Color(0xFFFFF9C4);
         fg = const Color(0xFF8D6E63);
         break;
       case AppointmentStatus.canceled:
-        label = 'Canceled';
+        label = 'ยกเลิก/ไม่สำเร็จ';
         bg = const Color(0xFFFFCDD2);
         fg = const Color(0xFFB71C1C);
         break;

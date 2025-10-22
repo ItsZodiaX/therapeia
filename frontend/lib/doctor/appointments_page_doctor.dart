@@ -2,14 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import 'package:flutter_frontend/api_service.dart';
+import 'package:flutter_frontend/models/auth_session.dart';
 
 import 'models/doctor_models.dart';
 import 'patient_details_page.dart';
 
 class AppointmentsPageDoctor extends StatefulWidget {
-  final String email;
+  final AuthSession session;
 
-  const AppointmentsPageDoctor({super.key, required this.email});
+  const AppointmentsPageDoctor({super.key, required this.session});
 
   @override
   State<AppointmentsPageDoctor> createState() => _AppointmentsPageDoctorState();
@@ -44,9 +45,7 @@ class _AppointmentsPageDoctorState extends State<AppointmentsPageDoctor> {
     });
 
     try {
-      final results = await _apiService.getDoctorAppointments(
-        email: widget.email,
-      );
+      final results = await _apiService.getDoctorAppointments(widget.session);
 
       setState(() {
         _appointmentsByDay = _groupByDay(results);
@@ -249,8 +248,10 @@ class _AppointmentsPageDoctorState extends State<AppointmentsPageDoctor> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) =>
-                      PatientDetailsPage(appointment: appointment),
+                  builder: (context) => PatientDetailsPage(
+                    session: widget.session,
+                    appointment: appointment,
+                  ),
                 ),
               );
             },

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_frontend/api_service.dart';
 import 'package:flutter_frontend/doctor/models/doctor_models.dart';
+import 'package:flutter_frontend/models/auth_session.dart';
 
 import 'dispense_medicine_page.dart';
 
 class MedicalExaminationHistoryPage extends StatefulWidget {
+  final AuthSession session;
   final String patientId;
   final String patientName;
 
@@ -13,6 +15,7 @@ class MedicalExaminationHistoryPage extends StatefulWidget {
 
   const MedicalExaminationHistoryPage({
     super.key,
+    required this.session,
     required this.patientId,
     required this.patientName,
   });
@@ -43,7 +46,10 @@ class _MedicalExaminationHistoryPageState
     });
 
     try {
-      final items = await _apiService.getPatientDiagnoses(widget.patientId);
+      final items = await _apiService.getPatientDiagnoses(
+        widget.session,
+        widget.patientId,
+      );
       setState(() {
         _entries = items;
         _isLoading = false;
@@ -190,6 +196,7 @@ class _MedicalExaminationHistoryPageState
               context,
               MaterialPageRoute(
                 builder: (context) => DispenseMedicinePage(
+                  session: widget.session,
                   patientId: widget.patientId,
                   patientName: widget.patientName,
                 ),

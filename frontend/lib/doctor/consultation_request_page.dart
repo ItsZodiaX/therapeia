@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_frontend/api_service.dart';
 import 'package:flutter_frontend/doctor/models/doctor_models.dart';
+import 'package:flutter_frontend/models/auth_session.dart';
 
 import 'patient_details_page.dart';
 
 class ConsultationRequestPage extends StatefulWidget {
-  final String email;
+  final AuthSession session;
 
-  const ConsultationRequestPage({super.key, required this.email});
+  const ConsultationRequestPage({super.key, required this.session});
 
   @override
   State<ConsultationRequestPage> createState() =>
@@ -48,24 +49,16 @@ class _ConsultationRequestPageState extends State<ConsultationRequestPage>
     }
 
     try {
-      final data = await _apiService.getDoctorAppointments(email: widget.email);
+      final pending = await _apiService.getDoctorPendingAppointments(
+        widget.session,
+      );
+      final assessed = await _apiService.getDoctorAssessedAppointments(
+        widget.session,
+      );
       if (!mounted) return;
 
-      data.sort((a, b) {
-        final aTime = a.startDateTime ?? a.date;
-        final bTime = b.startDateTime ?? b.date;
-        return aTime.compareTo(bTime);
-      });
-
-      final pending = <DoctorAppointment>[];
-      final assessed = <DoctorAppointment>[];
-      for (final appointment in data) {
-        if (appointment.isPending) {
-          pending.add(appointment);
-        } else {
-          assessed.add(appointment);
-        }
-      }
+      pending.sort((a, b) => a.startDateTime.compareTo(b.startDateTime));
+      assessed.sort((a, b) => a.startDateTime.compareTo(b.startDateTime));
 
       setState(() {
         _pending = pending;
@@ -240,8 +233,10 @@ class _ConsultationRequestPageState extends State<ConsultationRequestPage>
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) =>
-                  PatientDetailsPage(appointment: appointment),
+              builder: (context) => PatientDetailsPage(
+                session: widget.session,
+                appointment: appointment,
+              ),
             ),
           );
         },

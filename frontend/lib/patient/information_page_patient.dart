@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_frontend/api_service.dart';
+import 'package:flutter_frontend/models/auth_session.dart';
 import '../widgets/custom_app_bar.dart';
 
 class InformationPagePatient extends StatefulWidget {
-  final String email;
+  final AuthSession session;
 
-  const InformationPagePatient({super.key, required this.email});
+  const InformationPagePatient({super.key, required this.session});
 
   @override
   State<InformationPagePatient> createState() => _InformationPagePatientState();
 }
 
 class _InformationPagePatientState extends State<InformationPagePatient> {
-  late Future<Map<String, dynamic>> _profileFuture;
+  late Future<PatientProfile> _profileFuture;
   final ApiService _apiService = ApiService();
 
   @override
   void initState() {
     super.initState();
-    _profileFuture = _apiService.getPatientProfile(widget.email);
+    _profileFuture = _apiService.getPatientProfile(widget.session);
   }
 
   @override
@@ -27,7 +28,7 @@ class _InformationPagePatientState extends State<InformationPagePatient> {
       appBar: CustomAppBar(title: 'ข้อมูลส่วนตัว'),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: FutureBuilder<Map<String, dynamic>>(
+        child: FutureBuilder<PatientProfile>(
           future: _profileFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
@@ -43,25 +44,31 @@ class _InformationPagePatientState extends State<InformationPagePatient> {
               );
             }
 
-            final data = snapshot.data ?? <String, dynamic>{};
-            final fullName = _composeFullName(
-              data['first_name'] as String?,
-              data['last_name'] as String?,
-            );
-            final hnValue = data['hn']?.toString() ?? '-';
+            final profile = snapshot.data;
+            if (profile == null) {
+              return const Center(
+                child: Text(
+                  'ไม่พบข้อมูลผู้ป่วย',
+                  style: TextStyle(fontSize: 16),
+                ),
+              );
+            }
 
             final infoItems = <Map<String, String>>[
-              {'title': 'ชื่อ-นามสกุล', 'value': fullName},
-              {'title': 'อีเมล', 'value': data['email'] as String? ?? '-'},
+              {'title': 'ชื่อ-นามสกุล', 'value': profile.fullName},
+              {
+                'title': 'อีเมล',
+                'value': profile.email.isEmpty ? '-' : profile.email,
+              },
               {
                 'title': 'เบอร์โทรศัพท์',
-                'value': data['phone'] as String? ?? '-',
+                'value': profile.phone.isEmpty ? '-' : profile.phone,
               },
-              {
-                'title': 'เลขบัตรประชาชน',
-                'value': data['citizen_id'] as String? ?? '-',
-              },
-              {'title': 'Hospital Number (HN)', 'value': hnValue},
+              if (profile.updatedAt != null)
+                {
+                  'title': 'อัปเดตล่าสุด',
+                  'value': _formatUpdatedAt(profile.updatedAt!),
+                },
             ];
 
             return ListView(
@@ -101,14 +108,10 @@ class _InformationPagePatientState extends State<InformationPagePatient> {
     );
   }
 
-  String _composeFullName(String? firstName, String? lastName) {
-    final parts = <String>[];
-    if (firstName != null && firstName.isNotEmpty) {
-      parts.add(firstName);
-    }
-    if (lastName != null && lastName.isNotEmpty) {
-      parts.add(lastName);
-    }
-    return parts.isNotEmpty ? parts.join(' ') : '-';
+  String _formatUpdatedAt(DateTime value) {
+    final local = value.toLocal();
+    return '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/'
+        '${local.year} ${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
   }
 }

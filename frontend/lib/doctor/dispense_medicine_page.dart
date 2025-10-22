@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_frontend/api_service.dart';
 import 'package:flutter_frontend/doctor/models/doctor_models.dart';
+import 'package:flutter_frontend/models/auth_session.dart';
 
 import 'add_edit_medicine_page.dart';
 
 class DispenseMedicinePage extends StatefulWidget {
+  final AuthSession session;
   final String patientId;
   final String patientName;
 
@@ -13,6 +15,7 @@ class DispenseMedicinePage extends StatefulWidget {
 
   const DispenseMedicinePage({
     super.key,
+    required this.session,
     required this.patientId,
     required this.patientName,
   });
@@ -44,7 +47,10 @@ class _DispenseMedicinePageState extends State<DispenseMedicinePage> {
     });
 
     try {
-      final items = await _apiService.getPatientPrescriptions(widget.patientId);
+      final items = await _apiService.getPatientPrescriptions(
+        widget.session,
+        widget.patientId,
+      );
       setState(() {
         _splitPrescriptions(items);
         _isLoading = false;
@@ -78,11 +84,21 @@ class _DispenseMedicinePageState extends State<DispenseMedicinePage> {
       _isProcessing = true;
     });
 
+    final medicineId = item.medicineId;
+    if (medicineId == null) {
+      setState(() {
+        _isProcessing = false;
+      });
+      _showSnackBar('ไม่สามารถอัปเดตรายการนี้ได้ (ไม่ทราบรหัสยา)');
+      return;
+    }
+
     try {
       final updated = await _apiService.updatePrescription(
+        session: widget.session,
         prescriptionId: item.prescriptionId,
         patientId: item.patientId,
-        medicineId: item.medicineId,
+        medicineId: medicineId,
         dosage: item.dosage,
         amount: item.amount,
         onGoing: !item.isActive,
@@ -128,7 +144,10 @@ class _DispenseMedicinePageState extends State<DispenseMedicinePage> {
     });
 
     try {
-      await _apiService.deletePrescription(item.prescriptionId);
+      await _apiService.deletePrescription(
+        session: widget.session,
+        prescriptionId: item.prescriptionId,
+      );
       setState(() {
         _activePrescriptions.removeWhere(
           (entry) => entry.prescriptionId == item.prescriptionId,
@@ -173,6 +192,7 @@ class _DispenseMedicinePageState extends State<DispenseMedicinePage> {
       context,
       MaterialPageRoute(
         builder: (context) => AddEditMedicinePage(
+          session: widget.session,
           patientId: widget.patientId,
           patientName: widget.patientName,
           prescription: item,
